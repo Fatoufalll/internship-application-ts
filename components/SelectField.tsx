@@ -3,31 +3,29 @@ import React from "react";
 interface SelectFieldProps {
   id: string;
   label: string;
-  options: Array<string>;
-  value: string | "";
+  options: (string | undefined)[];
+  value?: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   error?: string;
 }
 
 const SelectField: React.FC<SelectFieldProps> = ({ id, label, options, value, onChange, error }) => {
   return (
-    <div>
-      <label className="block font-semibold mb-1" htmlFor={id}>{label}</label>
+    <div className="flex flex-col">
+      <label htmlFor={id} className="font-semibold mb-1">{label}</label>
       <select
-        required
         id={id}
-        className={`w-full border p-2 rounded ${error ? "border-red-500" : ""}`}
-        value={value}
+        value={value ?? ""}
         onChange={onChange}
-        aria-invalid={!!error}
+        className={`border rounded p-2 ${error ? "border-red-500" : "border-gray-300"}`}
       >
-        {options.map(option => (
-          <option key={option} value={option}>
-            {option === "" ? "-- Choisir --" : option}
+        {options.map((option, index) => (
+          <option key={index} value={option ?? ""}>
+            {option ?? "-- Choisir --"}
           </option>
         ))}
       </select>
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <span className="text-red-500 text-sm mt-1">{error}</span>}
     </div>
   );
 };
