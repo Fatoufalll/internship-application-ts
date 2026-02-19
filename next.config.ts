@@ -8,3 +8,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+export interface Params {
+  params: { id: string; };
+}
