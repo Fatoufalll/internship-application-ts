@@ -21,43 +21,39 @@ interface DemandeStage {
   date_creation: string;
 }
 
-const AdminDashboard: React.FC = () => {
+function AdminDashboard() {
   const [demandes, setDemandes] = useState<DemandeStage[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [estCharge, setEstCharge] = useState<boolean>(true); // Ajout de l'état de chargement
+  const [estCharge, setEstCharge] = useState<boolean>(true);
 
   const handleFetchError = (status: number, message: string) => {
     setErreur(`Erreur ${status}: ${message}`);
     setEstCharge(false);
   };
 
+  // Fonction pour générer l'URL correcte du fichier
+  const getFileUrl = (fileName?: string) => (fileName ? `/uploads/${fileName}` : "#");
+
   const fetchDemandes = async () => {
-    setEstCharge(true); // Début du chargement
+    setEstCharge(true);
     try {
-      const res = await fetch("http://localhost:3000/api/demandes");
-
-
+      const res = await fetch("/api/demandes");
       if (!res.ok) {
         const messageErreur = await res.text();
-        // Utiliser une fonction pour gérer l'erreur et sans lancer une exception
         handleFetchError(res.status, messageErreur);
-        return; // Sortir de la fonction après avoir géré l'erreur
+        return;
       }
 
       const data = await res.json();
-
-      if (!data || !Array.isArray(data)) {
-        throw new Error("Données invalides reçues");
-      }
-
+      if (!data || !Array.isArray(data)) throw new Error("Données invalides reçues");
 
       setDemandes(data);
       setErreur(null);
     } catch (err) {
       setErreur("Erreur lors de la récupération des demandes : " + (err as Error).message);
-      console.error("Erreur lors de la récupération des demandes:", err);
+      console.error(err);
     } finally {
-      setEstCharge(false); // Fin du chargement
+      setEstCharge(false);
     }
   };
 
@@ -70,7 +66,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (!res.ok) {
-        const messageErreur = await res.text(); 
+        const messageErreur = await res.text();
         throw new Error(`Erreur réseau lors de la mise à jour : ${res.status}. Détails : ${messageErreur}`);
       }
 
@@ -81,8 +77,8 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-  fetchDemandes();
-}, []); 
+    fetchDemandes();
+  }, []);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -90,7 +86,7 @@ const AdminDashboard: React.FC = () => {
         Admin
       </h1>
 
-      {erreur && <p className="text-red-500">{erreur}</p>} 
+      {erreur && <p className="text-red-500">{erreur}</p>}
 
       {estCharge ? (
         <p>Chargement des demandes...</p>
@@ -116,7 +112,7 @@ const AdminDashboard: React.FC = () => {
                 <td className="border px-2 py-1">
                   {d.cv_path && (
                     <a
-                      href={d.cv_path}
+                      href={getFileUrl(d.cv_path)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 underline mr-2"
@@ -126,7 +122,7 @@ const AdminDashboard: React.FC = () => {
                   )}
                   {d.lettre_path && (
                     <a
-                      href={d.lettre_path}
+                      href={getFileUrl(d.lettre_path)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 underline"
@@ -163,6 +159,6 @@ const AdminDashboard: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default AdminDashboard;

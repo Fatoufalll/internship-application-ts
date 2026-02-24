@@ -1,33 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma.config";
+import { Prisma } from "@prisma/client";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
-  if (!id) return NextResponse.json({ message: "ID manquant" }, { status: 400 });
-
+// -------------------- PUT : mettre à jour le statut --------------------
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const demande = await prisma.demandeStage.findUnique({
-      where: { id: Number(id) },
+    const { id: idStr } = await params; // <--- on "unwrap" le Promise
+    const id = Number(idStr);
+
+    if (isNaN(id)) {
+      return NextResponse.json({ message: "ID invalide" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const statut: string = body.statut;
+
+    if (!statut) {
+      return NextResponse.json({ message: "Statut requis" }, { status: 400 });
+    }
+
+    const updatedDemande = await prisma.demandeStage.update({
+      where: { id },
+      data: { statut },
     });
 
-    if (!demande) return NextResponse.json({ message: "Demande non trouvée" }, { status: 404 });
-
-    return NextResponse.json(demande);
+    return NextResponse.json(updatedDemande);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Erreur lors de la récupération de la demande" }, { status: 500 });
-  }
-}
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
-  if (!id) return NextResponse.json({ message: "ID manquant" }, { status: 400 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ message: "Demande non trouvée" }, { status: 404 });
+    }
 
-  try {
-    await prisma.demandeStage.delete({ where: { id: Number(id) } });
-    return NextResponse.json({ message: "Demande supprimée" });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Erreur lors de la suppression" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Erreur lors de la mise à jour du statut" },
+      { status: 500 }
+    );
   }
 }

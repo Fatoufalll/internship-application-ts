@@ -5,6 +5,7 @@ import InputField from "./InputField";
 import SelectField from "./SelectField";
 import FileField from "./FileField";
 
+// ---------- Validation Zod ----------
 const schema = z.object({
   civilite: z.enum(["Madame", "Monsieur"]).optional(),
   nom: z.string().min(2, { message: "Nom invalide (au moins 2 lettres)." }),
@@ -24,15 +25,16 @@ const schema = z.object({
   lettre: z.instanceof(File).optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormDataType = z.infer<typeof schema>;
 
-const optionsCivility: (string | undefined)[] = [undefined, "Madame", "Monsieur"];
-const optionsSituation: (string | undefined)[] = [undefined, "etudiant", "autre"];
-const optionsInternshipStatus: (string | undefined)[] = [undefined, "oui", "non"];
+const optionsCivility = [undefined, "Madame", "Monsieur"];
+const optionsSituation = [undefined, "etudiant", "autre"];
+const optionsInternshipStatus = [undefined, "oui", "non"];
 
+// ---------- Formulaire ----------
 const Form: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<FormDataType>({
     civilite: undefined,
     nom: "",
     prenom: "",
@@ -54,11 +56,12 @@ const Form: React.FC = () => {
   const [errorMessages, setErrorMessages] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<boolean>(false);
 
+  // ---------- Handlers ----------
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
 
-  const handleFileChange = (id: keyof FormData) => (file: File | null) => {
+  const handleFileChange = (id: keyof FormDataType) => (file: File | null) => {
     if (file && file.size > 8 * 1024 * 1024) {
       setErrorMessages((prev) => ({ ...prev, [id]: "Le fichier doit faire moins de 8 Mo." }));
       return;
@@ -67,12 +70,35 @@ const Form: React.FC = () => {
     setFormData((prev) => ({ ...prev, [id]: file }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      schema.parse(formData); // si ça échoue, ça lance un ZodError
-      setSuccess(true);
+      schema.parse(formData); // validation Zod
       setErrorMessages({});
+
+      // Préparer FormData pour POST
+      const payload = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (value instanceof File) {
+            payload.append(key, value);
+          } else {
+            payload.append(key, value.toString());
+          }
+        }
+      });
+
+      const res = await fetch("/api/demandes", {
+        method: "POST",
+        body: payload,
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Erreur lors de l'envoi de la candidature");
+      }
+
+      setSuccess(true);
       formRef.current?.reset();
       setFormData({
         civilite: undefined,
@@ -101,10 +127,14 @@ const Form: React.FC = () => {
         });
         setErrorMessages(errors);
         setSuccess(false);
+      } else {
+        setErrorMessages({ submit: (err as Error).message });
+        setSuccess(false);
       }
     }
   };
 
+  // ---------- JSX ----------
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 text-black">
       <SelectField
@@ -166,6 +196,7 @@ const Form: React.FC = () => {
       </button>
 
       {success && <p className="text-green-600 text-center">Candidature envoyée ✅</p>}
+      {errorMessages.submit && <p className="text-red-600 text-center">{errorMessages.submit}</p>}
     </form>
   );
 };
