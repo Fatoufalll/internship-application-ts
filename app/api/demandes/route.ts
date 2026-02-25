@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import fs from "fs";
 import path from "path";
+import { sendEmail } from "@/lib/sendEmail";
 
 // Schéma Zod pour validation
 const demandeSchema = z.object({
@@ -126,9 +127,28 @@ export async function POST(req: NextRequest) {
       lettre_path: validated.lettre_path || "",
     };
 
-    const newDemande = await prisma.demandeStage.create({ data: prismaData });
+  const newDemande = await prisma.demandeStage.create({ data: prismaData });
 
-    return NextResponse.json(newDemande, { status: 201 });
+// ✅ On protège l'envoi d'email
+try {
+  await sendEmail(
+    validated.email,
+    "Confirmation de réception – BIDOUILLE ET INFORMATIQUE",
+    `
+    <div style="font-family: Arial, sans-serif;">
+      <h2>BIDOUILLE ET INFORMATIQUE</h2>
+      <p>Bonjour ${validated.prenom},</p>
+      <p>Nous avons bien reçu votre demande de stage.</p>
+      <p>Elle est actuellement en cours d’étude.</p>
+    </div>
+    `
+  );
+} catch (emailError) {
+  console.error("Erreur envoi email :", emailError);
+}
+
+// ✅ Ensuite on retourne la réponse API
+return NextResponse.json(newDemande, { status: 201 });
   } catch (error: unknown) {
     console.error(error);
     if (error instanceof ZodError) {
@@ -142,4 +162,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  
 }
