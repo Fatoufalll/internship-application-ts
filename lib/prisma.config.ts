@@ -1,5 +1,11 @@
-import "dotenv/config"; // Charge les variables d'environnement
-import { PrismaClient } from "@prisma/client"; // PrismaClient est bien exporté en Prisma 6
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
+
+// Vérifie que la variable d'environnement existe
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL n'est pas définie !");
+}
 
 // Singleton pour éviter de multiples instances en dev
 declare global {
@@ -11,12 +17,17 @@ declare global {
 export const prisma =
   global.prisma ??
   new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL!, // TypeScript sait que c'est bien string
+      },
+    },
     log: process.env.NODE_ENV === "development" ? ["query", "error"] : [],
   });
 
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;
 
-// Configuration optionnelle (schema + migrations)
+// Config Prisma optionnelle
 export const prismaConfig = {
   schema: "prisma/schema.prisma",
   migrations: {
